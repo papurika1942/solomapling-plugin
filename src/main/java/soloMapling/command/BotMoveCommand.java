@@ -244,7 +244,9 @@ public class BotMoveCommand extends Command {
                 TestMethods.fmRoomPathWithStops(fakechar, c.getPlayer().getPosition());
                 break;
             case "sitchair":
-                Integer chairId2 = 3010071;
+                // 修复 260912 #1：废弃椅子 3010071 在 WZ 中不存在，坐上后向全图广播非法 SHOW_CHAIR 封包会带崩同图客户端。
+                // 改用合法的 v72s 椅子 3010072（与移除前随机池顺序相邻，外观/手感一致）。
+                Integer chairId2 = 3010072;
                 botSitChair(fakechar, chairId2);
                 break;
             case "unsitchair":

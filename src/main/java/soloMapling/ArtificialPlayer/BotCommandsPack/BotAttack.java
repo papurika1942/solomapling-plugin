@@ -83,6 +83,9 @@ public final class BotAttack {
     public static void skillSwing(Character chr, int skillId) {
         if (chr == null || chr.getMap() == null) return;
         if (skillId <= 0) { basicSwing(chr); return; }
+        // 双保险（修复 260912 #2）：若 Bot 实际持远程武器，强制重定向到远程飞镖封包，
+        // 避免任何路径把远程技能误投成近战 CLOSE_RANGE_ATTACK 而带崩客户端。
+        if (isRangedWeapon(chr)) { rangedSwing(chr, skillId); return; }
 
         int facingMask = facingLeft(chr) ? BotAttackData.FACING_LEFT_MASK : BotAttackData.FACING_RIGHT_MASK;
         WeaponType weaponType = resolveEquippedWeaponType(chr);
@@ -93,6 +96,33 @@ public final class BotAttack {
                 chr,
                 PacketCreator.closeRangeAttack(chr, skillId, resolveSkillLevel(skillId), facingMask,
                         /* numAttackedAndDamage */ 0, emptyTargets, BotAttackData.DEFAULT_ATTACK_SPEED,
+                        bodyActionId, /* display */ 0),
+                false
+        );
+    }
+
+    /**
+     * Broadcast a cosmetic RANGED skill swing at the air - the character plays the ranged attack
+     * pose with the flying projectile (arrow / bolt / star / bullet), no targets and no damage.
+     * Mirrors {@link #skillSwing} but uses PacketCreator.rangedAttack (carrying the weapon's
+     * projectile) instead of the close-range packet, so ranged skills (e.g. Hermit's Avenger /
+     * 风魔手里剑 4111005) render correctly instead of crashing the viewer with a null projectile.
+     * Pure visual.
+     */
+    public static void rangedSwing(Character chr, int skillId) {
+        if (chr == null || chr.getMap() == null) return;
+        if (skillId <= 0) { basicSwing(chr); return; }
+
+        int facingMask = facingLeft(chr) ? BotAttackData.FACING_LEFT_MASK : BotAttackData.FACING_RIGHT_MASK;
+        WeaponType weaponType = resolveEquippedWeaponType(chr);
+        int bodyActionId = BotAttackData.actionFor(skillId, weaponType);
+        int projectile = BotAttackData.projectileFor(weaponType);
+
+        Map<Integer, List<Integer>> emptyTargets = Collections.emptyMap();
+        chr.getMap().broadcastMessage(
+                chr,
+                PacketCreator.rangedAttack(chr, skillId, resolveSkillLevel(skillId), facingMask,
+                        /* numAttackedAndDamage */ 0, projectile, emptyTargets, BotAttackData.DEFAULT_ATTACK_SPEED,
                         bodyActionId, /* display */ 0),
                 false
         );
@@ -119,6 +149,15 @@ public final class BotAttack {
                         BotAttackData.DEFAULT_ATTACK_SPEED, bodyActionId, /* display */ 0),
                 false
         );
+    }
+
+    // 远程武器判定（修复 260912 #2）：拳套/弓/弩/枪的技能必须走远程飞镖封包。
+    private static boolean isRangedWeapon(Character chr) {
+        WeaponType weaponType = resolveEquippedWeaponType(chr);
+        return weaponType == WeaponType.CLAW
+                || weaponType == WeaponType.BOW
+                || weaponType == WeaponType.CROSSBOW
+                || weaponType == WeaponType.GUN;
     }
 
     // The skill's max level, so the fanciest form of the effect renders. Bots don't learn skills, so

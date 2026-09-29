@@ -158,9 +158,12 @@ public final class BotFlavor {
         int skillId = profile.skillFor(weapon);
         if (profile.route == BotAttackProfile.Route.MAGIC) {
             BotAttack.magicSwing(chr, skillId);
+        } else if (profile.route == BotAttackProfile.Route.RANGED) {
+            // 修复 260912 #2：远程技能（风魔手里剑等）必须走远程飞镖封包，
+            // 复用近战 CLOSE_RANGE_ATTACK 会让客户端投射物空指针解引用崩溃。
+            BotAttack.rangedSwing(chr, skillId);
         } else {
-            // CLOSE and RANGED both render through the close-range pose path; skillSwing falls back to
-            // a plain weapon swing when the skill id is 0.
+            // CLOSE：近战技能走近战挥击；skillSwing 内部对远程武器仍有重定向保护。
             BotAttack.skillSwing(chr, skillId);
         }
     }
