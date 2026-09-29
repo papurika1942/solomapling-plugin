@@ -2,6 +2,7 @@ package soloMapling.ArtificialPlayer.BotMovementSystem;
 
 import org.gms.client.Character;
 import org.gms.net.packet.InPacket;
+import org.gms.server.ItemInformationProvider;
 import org.gms.server.maps.Foothold;
 import org.gms.server.maps.Portal;
 import soloMapling.ArtificialPlayer.BotHelpers;
@@ -450,6 +451,11 @@ public class MovementCommands {
     }
 
     public static void botSitChair(Character fakechar, Integer chairId) {
+        // 双保险（修复 260912 #1）：广播 SHOW_CHAIR 前先校验椅子道具在 WZ 中存在，
+        // 拦截一切未定义/损坏的椅子 ID（如已移除的废弃 3010071），从源头杜绝带崩同图客户端。
+        if (chairId == null || !ItemInformationProvider.getInstance().itemExists(chairId)) {
+            return;
+        }
         fakechar.setChair(chairId);
         int stance = fakechar.getStance();
         InPacket sitPacket = createSitPacket(fakechar);
